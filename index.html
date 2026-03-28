@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Мойки: Задачи</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, where, deleteDoc, doc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA5cMCEUvjorxi6Nwr-783MFtnTq5dC4I4",
+            authDomain: "carwashappw.firebaseapp.com",
+            projectId: "carwashappw",
+            storageBucket: "carwashappw.firebasestorage.app",
+            messagingSenderId: "1039787275423",
+            appId: "1:1039787275423:web:6a14edf2283c4ad2b01eaa"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        window.currentSite = '';
+        window.currentInfoSite = '';
+
+        // --- ЛОГИКА ФОРМАТИРОВАНИЯ (ССЫЛКИ И ТЕЛЕФОНЫ) ---
+        function formatContent(text) {
+            if (!text) return '<span class="text-gray-400 italic font-normal">Нет данных</span>';
+            
+            let formatted = text;
+
+            // 1. Сначала обрабатываем ссылки в скобках [Название](ссылка)
+            const mdUrlRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+            formatted = formatted.replace(mdUrlRegex, (match, title, url) => {
+                let finalUrl = url;
+                let icon = '🔗'; 
+                const lowerTitle = title.toLowerCase();
+
+                if (lowerTitle.includes('камер') || lowerTitle.includes('видео')) icon = '📹';
+                else if (lowerTitle.includes('свет') || lowerTitle.includes('ламп') || lowerTitle.includes('прожектор')) icon = '💡';
+                else if (lowerTitle.includes('схем') || lowerTitle.includes('чертеж') || lowerTitle.includes('план')) icon = '📐';
+                else if (lowerTitle.includes('насос') || lowerTitle.includes('помп')) icon = '⚙️';
+                else if (lowerTitle.includes('чек') || lowerTitle.includes('оплат') || lowerTitle.includes('касс')) icon = '🧾';
+                else if (lowerTitle.includes('щит') || lowerTitle.includes('электр') || lowerTitle.includes('фаз')) icon = '⚡';
+                else if (lowerTitle.includes('инструкц') || lowerTitle.includes('документ') || lowerTitle.includes('реквизит')) icon = '📄';
+                else if (lowerTitle.includes('тел') || lowerTitle.includes('звон')) icon = '📞';
+                else if (url.match(/\.(jpeg|jpg|gif|png|webp)/i) || url.includes('drive.google.com')) icon = '🖼️';
+
+                if (url.includes('drive.google.com')) {
+                    const driveIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                    if (driveIdMatch) finalUrl = `https://drive.google.com/uc?export=view&id=${driveIdMatch[1]}`;
+                }
+
+                const btnColor = url.includes('.pdf') ? 'bg-red-600' : 'bg-blue-600';
+                return `
+                <a href="${finalUrl}" target="_blank" class="block my-3 p-4 ${btnColor} rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all shadow-md">
+                    <span class="text-white font-black uppercase text-[10px] tracking-widest leading-none">${title}</span>
+                    <span class="text-white text-lg">${icon}</span>
+                </a>`;
+            });
+
+            // 2. Затем находим номера телефонов (форматы +7..., 8..., или просто 10-11 цифр)
+            // Игнорируем те цифры, которые уже внутри ссылок
+            const phoneRegex = /(\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}/g;
+            formatted = formatted.replace(phoneRegex, (phone) => {
+                const cleanPhone = phone.replace(/\D/g, ''); // Очистка от скобок и тире для ссылки
+                return `
+                <a href="tel:${cleanPhone}" class="block my-3 p-4 bg-green-600 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all shadow-md">
+                    <span class="text-white font-black uppercase text-[10px] tracking-widest leading-none">${phone}</span>
+                    <span class="text-white text-lg">📞</span>
+                </a>`;
+            });
+
+            return formatted;
+        }
+
+        // --- FIREBASE FUNCTIONS ---
+        window.openInfoSite = (site) => {
+            window.currentInfoSite = site;
+            document.getElementById('info-site-title').innerText = "ИНФО: " + site;
+            document.getElementById('info-selection').classList.add('hidden');
+            document.getElementById('info-content').classList.remove('hidden');
+            onSnapshot(doc(db, "settings", "info_" + site), (docSnap) => {
+                const val = docSnap.exists() ? docSnap.data().content : "";
+                document.getElementById('info-display-text').innerHTML = formatContent(val);
+                document.getElementById('edit-info-input').value = val;
+            });
+        };
+
+        window.saveGeneralInfo = async () => {
+            await setDoc(doc(db, "settings", "info_" + window.currentInfoSite), { content: document.getElementById('edit-info-input').value });
+            window.toggleInfoEdit(false);
+        };
+
+        window.addTask = async () => {
+            const t = document.getElementById('input-task').value.trim();
+            const d = document.getElementById('input-desc').value.trim();
+            if(!t) return;
+            await addDoc(collection(db, "tasks"), { text: t, description: d, site: window.currentSite, createdAt: Date.now() });
+            document.getElementById('input-task').value = '';
+            document.getElementById('input-desc').value = '';
+            window.closeModal('modal-add');
+        };
+
+        window.loadTasks = (site) => {
+            const q = query(collection(db, "tasks"), where("site", "==", site));
+            onSnapshot(q, (snapshot) => {
+                const list = document.getElementById('task-list');
+                list.innerHTML = '';
+                snapshot.forEach((docSnap) => {
+                    const task = docSnap.data();
+                    const item = document.createElement('div');
+                    item.className = 'bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 mb-4 active:scale-95 transition-all flex justify-between items-center';
+                    item.onclick = () => window.showDetails(docSnap.id, task.text, task.description);
+                    item.innerHTML = `
+                        <div class="text-left leading-tight">
+                            <span class="text-lg font-black text-slate-800 block mb-1">${task.text}</span>
+                            <span class="text-[9px] text-blue-500 font-bold uppercase tracking-widest italic opacity-70">Открыть детали →</span>
+                        </div>
+                        <button onclick="event.stopPropagation(); window.deleteTask('${docSnap.id}')" class="text-slate-200 text-3xl px-2">✕</button>
+                    `;
+                    list.appendChild(item);
+                });
+            });
+        };
+
+        window.showDetails = (id, title, desc) => {
+            window.editingTaskId = id;
+            document.getElementById('detail-title-text').innerText = title;
+            document.getElementById('detail-desc-text').innerHTML = formatContent(desc);
+            document.getElementById('edit-task-title').value = title;
+            document.getElementById('edit-task-desc').value = desc;
+            window.openModal('modal-detail');
+        };
+
+        window.saveEditedTask = async () => {
+            await updateDoc(doc(db, "tasks", window.editingTaskId), { text: document.getElementById('edit-task-title').value, description: document.getElementById('edit-task-desc').value });
+            window.closeModal('modal-detail');
+        };
+
+        window.deleteTask = async (id) => { if(confirm("Удалить задачу?")) await deleteDoc(doc(db, "tasks", id)); };
+        window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
+        window.closeModal = (id) => {
+            document.getElementById(id).classList.add('hidden');
+            if(id === 'modal-info-select') { document.getElementById('info-selection').classList.remove('hidden'); document.getElementById('info-content').classList.add('hidden'); }
+        };
+        window.toggleInfoEdit = (isEdit) => {
+            document.getElementById('info-view-mode').classList.toggle('hidden', isEdit);
+            document.getElementById('info-edit-mode').classList.toggle('hidden', !isEdit);
+        };
+    </script>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans antialiased text-slate-900">
+    
+    <div id="screen-main" class="p-6 max-w-md mx-auto">
+        <h1 class="text-4xl font-black text-center mb-10 mt-12 tracking-tighter uppercase italic text-slate-800">МОЙКИ: ЗАДАЧИ</h1>
+        <div class="grid gap-6">
+            <button onclick="openWash('Королев')" class="h-44 bg-blue-600 rounded-[3rem] shadow-2xl shadow-blue-100 text-white text-3xl font-black active:scale-95 transition-all">КОРОЛЕВ</button>
+            <button onclick="openWash('Медведково')" class="h-44 bg-blue-900 rounded-[3rem] shadow-2xl shadow-blue-200 text-white text-3xl font-black active:scale-95 transition-all">МЕДВЕДКОВО</button>
+            <button onclick="window.openModal('modal-info-select')" class="py-6 bg-white border-2 border-slate-200 rounded-[2.5rem] text-slate-400 font-black text-xl active:bg-slate-50 flex items-center justify-center gap-3 tracking-widest shadow-sm uppercase italic">ИНФОРМАЦИЯ</button>
+        </div>
+    </div>
+
+    <div id="screen-tasks" class="hidden min-h-screen flex flex-col">
+        <div class="p-4 bg-white border-b flex items-center justify-between sticky top-0 z-40">
+            <button onclick="location.reload()" class="bg-slate-100 w-12 h-12 rounded-2xl flex items-center justify-center font-black text-blue-600">←</button>
+            <h2 id="title-wash" class="font-black text-xl uppercase tracking-widest text-slate-800"></h2>
+            <div class="w-12"></div>
+        </div>
+        <div id="task-list" class="p-6 flex-grow overflow-y-auto pb-36"></div>
+        <div class="fixed bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-slate-50 z-30 text-center">
+            <button onclick="window.openModal('modal-add')" class="w-full py-6 bg-blue-600 text-white rounded-[2.5rem] font-black text-xl shadow-xl shadow-blue-200 uppercase tracking-widest active:scale-95 transition-all">+ ЗАДАЧА</button>
+        </div>
+    </div>
+
+    <div id="modal-info-select" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6 z-50">
+        <div class="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-2xl text-center">
+            <div id="info-selection">
+                <h3 class="text-2xl font-black mb-8 text-slate-800 uppercase tracking-tighter text-slate-800">ОБЪЕКТ</h3>
+                <div class="grid gap-4">
+                    <button onclick="window.openInfoSite('Королев')" class="py-6 bg-blue-50 text-blue-600 rounded-[2rem] font-black text-xl uppercase">Королев</button>
+                    <button onclick="window.openInfoSite('Медведково')" class="py-6 bg-blue-900 text-white rounded-[2rem] font-black text-xl uppercase">Медведково</button>
+                    <button onclick="window.closeModal('modal-info-select')" class="py-4 text-slate-300 font-black mt-4 uppercase tracking-[0.3em] text-[9px]">Закрыть</button>
+                </div>
+            </div>
+            <div id="info-content" class="hidden">
+                <h3 id="info-site-title" class="text-[9px] font-black mb-6 uppercase text-blue-500 tracking-[0.3em]"></h3>
+                <div id="info-view-mode">
+                    <div id="info-display-text" class="text-slate-600 mb-10 text-base text-left border-t border-slate-50 pt-8 max-h-[50vh] overflow-y-auto scrollbar-hide"></div>
+                    <div class="flex gap-4">
+                        <button onclick="document.getElementById('info-selection').classList.remove('hidden'); document.getElementById('info-content').classList.add('hidden');" class="flex-1 py-5 bg-slate-100 rounded-2xl font-black text-[9px] uppercase text-slate-400">Назад</button>
+                        <button onclick="window.toggleInfoEdit(true)" class="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black text-[9px] uppercase shadow-lg shadow-blue-100">Править</button>
+                    </div>
+                </div>
+                <div id="info-edit-mode" class="hidden">
+                    <textarea id="edit-info-input" class="w-full h-80 p-6 bg-slate-50 border rounded-[2.5rem] mb-6 outline-none text-sm font-medium" placeholder="Пример: 89001234455"></textarea>
+                    <div class="flex gap-4">
+                        <button onclick="window.toggleInfoEdit(false)" class="flex-1 py-4 font-black text-slate-300 uppercase text-[9px]">Отмена</button>
+                        <button onclick="window.saveGeneralInfo()" class="flex-1 py-4 bg-green-500 text-white rounded-2xl font-black uppercase text-[9px]">Сохранить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-add" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6 z-50">
+        <div class="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-2xl">
+            <h3 class="text-2xl font-black mb-8 text-center uppercase tracking-tighter text-slate-800 italic">Новая задача</h3>
+            <input id="input-task" type="text" class="w-full p-6 bg-slate-50 rounded-2xl mb-4 outline-none font-bold" placeholder="Суть задачи">
+            <textarea id="input-desc" class="w-full p-6 bg-slate-50 rounded-2xl mb-8 h-44 outline-none text-sm font-medium" placeholder="Номер или [Кнопка](ссылка)"></textarea>
+            <div class="flex gap-4 text-center">
+                <button onclick="window.closeModal('modal-add')" class="flex-1 py-4 font-black text-slate-300 uppercase text-[9px]">Отмена</button>
+                <button onclick="window.addTask()" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[9px] shadow-xl shadow-blue-100">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-detail" class="hidden fixed inset-0 bg-slate-950/95 backdrop-blur-2xl flex items-center justify-center p-6 z-50">
+        <div class="bg-white w-full max-w-sm rounded-[4rem] p-10 shadow-2xl text-center">
+            <div id="detail-view">
+                <h3 id="detail-title-text" class="text-3xl font-black mb-6 text-slate-900 tracking-tighter"></h3>
+                <div id="detail-desc-text" class="text-slate-600 text-base leading-relaxed mb-10 text-left border-t border-slate-100 pt-8 max-h-[50vh] overflow-y-auto scrollbar-hide"></div>
+                <div class="flex gap-4">
+                    <button onclick="window.closeModal('modal-detail')" class="flex-1 py-5 bg-slate-100 rounded-2xl font-black uppercase text-[9px] text-slate-400">Закрыть</button>
+                    <button onclick="document.getElementById('detail-view').classList.add('hidden'); document.getElementById('detail-edit').classList.remove('hidden');" class="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-[9px] shadow-xl">Править</button>
+                </div>
+            </div>
+            <div id="detail-edit" class="hidden">
+                <input id="edit-task-title" type="text" class="w-full p-6 bg-slate-50 border rounded-2xl mb-4 font-bold text-lg">
+                <textarea id="edit-task-desc" class="w-full h-72 p-6 bg-slate-50 border rounded-2xl mb-8 text-sm font-medium"></textarea>
+                <div class="flex gap-4">
+                    <button onclick="document.getElementById('detail-view').classList.remove('hidden'); document.getElementById('detail-edit').classList.add('hidden');" class="flex-1 py-4 font-black text-slate-300 uppercase text-[9px]">Назад</button>
+                    <button onclick="window.saveEditedTask()" class="flex-1 py-4 bg-green-500 text-white rounded-2xl font-black uppercase text-[9px]">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openWash(site) {
+            window.currentSite = site;
+            document.getElementById('screen-main').classList.add('hidden');
+            document.getElementById('screen-tasks').classList.remove('hidden');
+            document.getElementById('title-wash').innerText = site;
+            window.loadTasks(site);
+        }
+    </script>
+</body>
+</html>
