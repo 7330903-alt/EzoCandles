@@ -3,66 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Эзо Свечи</title>
+    <title>Ezo Candles Pro</title>
 
-    <!-- 1. СВЯЗЬ С МАНИФЕСТОМ (Проверь, что файл называется manifest.json) -->
+    <!-- Настройки для PWA (Мобильное приложение) -->
     <link rel="manifest" href="manifest.json">
-    
-    <!-- 2. НАСТРОЙКИ ДЛЯ МОБИЛЬНЫХ -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Эзо Свечи">
+    <meta name="application-name" content="Ezo Pro">
+    <meta name="apple-mobile-web-app-title" content="Ezo Pro">
     <meta name="theme-color" content="#007bff">
+    <meta name="msapplication-navbutton-color" content="#007bff">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://cdn-icons-png.flaticon.com/512/1055/1055666.png">
+    <link rel="apple-touch-icon" type="image/png" sizes="192x192" href="https://cdn-icons-png.flaticon.com/512/1055/1055666.png">
 
-    <!-- 3. ИКОНКИ (Важно для корректного отображения на рабочем столе) -->
-    <link rel="icon" type="image/png" sizes="192x192" href="https://img.icons8.com/fluency/192/candle.png">
-    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/candle.png">
-
-    <!-- Регистрация Service Worker (БЕЗ ЭТОГО УСТАНОВКА НЕ РАБОТАЕТ) -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('SW зарегистрирован!', reg))
-                    .catch(err => console.error('Ошибка SW:', err));
-            });
-        }
-    </script>
-
-    <!-- Firebase SDK -->
+    <!-- Подключение Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; color: #333; -webkit-tap-highlight-color: transparent; }
+        
+        /* Шапка */
         .app-header { background: #fff; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; display: flex; justify-content: center; align-items: center; min-height: 60px; }
         #header-title { margin: 0; font-size: 20px; font-weight: 700; color: #2c3e50; }
         .view-toggler { position: absolute; right: 15px; background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; }
+
+        /* Контент */
         .main-container { padding: 20px; }
         .global-search { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 20px; box-sizing: border-box; font-size: 16px; outline: none; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
+
         .menu-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
         .menu-card { background: white; padding: 25px; border-radius: 18px; text-align: center; font-size: 18px; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.05); cursor: pointer; border: 1px solid #f0f0f0; transition: transform 0.1s; }
         .menu-card:active { transform: scale(0.97); }
+
+        /* Экраны */
         .screen { display: none; padding: 15px; padding-bottom: 100px; }
         .active-screen { display: block !important; }
         .btn-back { background: #6c757d; color: white; border: none; padding: 10px 18px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; font-weight: bold; }
+
+        /* Элементы списка */
         #data-container { display: flex; flex-direction: column; gap: 12px; }
         .data-item { background: white; padding: 15px; border-radius: 14px; border-left: 5px solid #007bff; position: relative; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
         .item-actions { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: row; gap: 8px; z-index: 5; }
         .btn-edit, .btn-delete { background: #f8f9fa; border: 1px solid #ddd; border-radius: 80px; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
         .item-preview { font-size: 15px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding-right: 80px; }
         .item-img-thumb { width: 100%; height: 160px; object-fit: cover; border-radius: 10px; margin-bottom: 10px; display: none; background: #eee; }
+
+        /* Вид сетки */
         #data-container.grid-view { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .grid-view .data-item { border-left: none; border-top: 5px solid #007bff; padding: 12px; min-height: 100px; display: flex; flex-direction: column; }
         .grid-view .has-photo .item-img-thumb { display: block; } 
         .grid-view .data-item .item-preview { padding-right: 0; margin-top: 35px; }
+
+        /* Модальные окна */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; width: 92%; max-width: 450px; padding: 20px; border-radius: 20px; max-height: 85vh; overflow-y: auto; position: relative; }
+        
         .view-img { width: 100%; border-radius: 12px; margin-top: 15px; margin-bottom: 15px; max-height: 350px; object-fit: contain; background: #000; }
+        
         .item-title-bold { font-weight: 800; font-size: 18px; display: block; color: #2c3e50; border-bottom: 2px solid #007bff; padding-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         .view-text { font-size: 16px; line-height: 1.6; white-space: pre-wrap; color: #444; margin-top: 10px; }
+
+        /* Кнопка ссылки */
         .view-link-btn { display: inline-flex; align-items: center; justify-content: center; background: #007bff; color: white; padding: 14px 20px; border-radius: 12px; text-decoration: none; font-weight: 800; margin-top: 15px; width: 100%; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,123,255,0.3); text-transform: uppercase; font-size: 13px; }
+
+        /* Кнопка добавить */
         .fab-add { background: #28a745; color: white; border: none; width: 65px; height: 65px; border-radius: 50%; font-size: 35px; position: fixed; bottom: 30px; right: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 90; cursor: pointer; }
         .del-photo-btn { background: #dc3545; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 13px; margin-top: 10px; cursor: pointer; display: none; width: 100%; font-weight: bold; }
     </style>
@@ -70,10 +78,11 @@
 <body>
 
     <div class="app-header">
-        <h2 id="header-title">Эзо Свечи</h2>
+        <h2 id="header-title">Ezo Candles</h2>
         <button id="view-toggle-btn" class="view-toggler" onclick="toggleView()" style="display:none;">вид: ☰</button>
     </div>
 
+    <!-- Главный экран -->
     <div id="main-screen" class="screen active-screen">
         <div class="main-container">
             <input type="text" id="global-search" class="global-search" placeholder="Поиск по записям..." oninput="globalSearch()">
@@ -90,16 +99,47 @@
         </div>
     </div>
 
+    <!-- Экран раздела -->
     <div id="section-screen" class="screen">
         <button class="btn-back" onclick="navToMain()">← На главную</button>
         <div id="data-container"></div>
         <button class="fab-add" onclick="openEditModal()">+</button>
     </div>
 
-    <div id="view-modal" class="modal"><div class="modal-content"><div id="view-area"></div><button onclick="closeViewModal()" style="width:100%; padding:14px; margin-top:20px; border-radius:12px; border:1px solid #ddd; background:#f8f9fa; font-weight: 800; cursor: pointer;">ЗАКРЫТЬ</button></div></div>
-    <div id="edit-modal" class="modal"><div class="modal-content"><h3 id="modal-header">ЗАПИСЬ</h3><textarea id="f-text" rows="8" placeholder="ПЕРВАЯ СТРОКА - ЗАГОЛОВОК..." style="width:100%; padding:12px; box-sizing:border-box; border-radius:10px; border:1px solid #ddd; font-size:16px; outline:none;"></textarea><input type="url" id="f-link" placeholder="Вставьте ссылку (если есть)" style="width:100%; margin:15px 0; padding:12px; box-sizing:border-box; border-radius:10px; border:1px solid #ddd; outline:none;"><div id="photo-edit-area" style="background: #f9f9f9; padding: 15px; border-radius: 12px; border: 1px dashed #ccc;"><p style="margin:0 0 10px 0; font-size:14px; font-weight: bold;">ФОТОГРАФИЯ:</p><input type="file" id="f-file" accept="image/*"><button id="btn-del-photo" class="del-photo-btn" onclick="removeCurrentPhoto()">🗑️ УДАЛИТЬ ТЕКУЩЕЕ ФОТО</button></div><div style="display:flex; gap:10px; margin-top:20px;"><button onclick="closeEditModal()" style="flex:1; padding:12px; border:none; border-radius:10px; background:#e9ecef; font-weight: bold;">ОТМЕНА</button><button id="btn-save" onclick="handleSave()" style="flex:2; padding:12px; background:#28a745; color:white; border:none; border-radius:10px; font-weight:bold;">СОХРАНИТЬ</button></div></div></div>
+    <!-- Модалка просмотра -->
+    <div id="view-modal" class="modal">
+        <div class="modal-content">
+            <div id="view-area"></div>
+            <button onclick="closeViewModal()" style="width:100%; padding:14px; margin-top:20px; border-radius:12px; border:1px solid #ddd; background:#f8f9fa; font-weight: 800; cursor: pointer;">ЗАКРЫТЬ</button>
+        </div>
+    </div>
+
+    <!-- Модалка редактирования -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-header">ЗАПИСЬ</h3>
+            <textarea id="f-text" rows="8" placeholder="ПЕРВАЯ СТРОКА - ЗАГОЛОВОК..." style="width:100%; padding:12px; box-sizing:border-box; border-radius:10px; border:1px solid #ddd; font-size:16px; outline:none;"></textarea>
+            <input type="url" id="f-link" placeholder="Вставьте ссылку (если есть)" style="width:100%; margin:15px 0; padding:12px; box-sizing:border-box; border-radius:10px; border:1px solid #ddd; outline:none;">
+            
+            <div id="photo-edit-area" style="background: #f9f9f9; padding: 15px; border-radius: 12px; border: 1px dashed #ccc;">
+                <p style="margin:0 0 10px 0; font-size:14px; font-weight: bold;">ФОТОГРАФИЯ:</p>
+                <input type="file" id="f-file" accept="image/*">
+                <button id="btn-del-photo" class="del-photo-btn" onclick="removeCurrentPhoto()">🗑️ УДАЛИТЬ ТЕКУЩЕЕ ФОТО</button>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button onclick="closeEditModal()" style="flex:1; padding:12px; border:none; border-radius:10px; background:#e9ecef; font-weight: bold;">ОТМЕНА</button>
+                <button id="btn-save" onclick="handleSave()" style="flex:2; padding:12px; background:#28a745; color:white; border:none; border-radius:10px; font-weight:bold;">СОХРАНИТЬ</button>
+            </div>
+        </div>
+    </div>
 
     <script>
+        // Регистрация Service Worker для PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log("SW error", err));
+        }
+
         const IMGBB_API_KEY = "27be3d0dd96de9ca95267508f7f3e3c1";
         const firebaseConfig = {
             apiKey: "AIzaSyBqr-WMZei0kefcWrlbFcpog7mr0PUwGmI",
@@ -110,10 +150,14 @@
             appId: "1:147534786796:web:76f5c2dd2ae3268c5875c9",
             measurementId: "G-ML33WSVSJV"
         };
+
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let currentCategory = ""; let editId = null; let allData = []; let currentPhotoUrl = null; 
+        let currentCategory = "";
+        let editId = null;
+        let allData = [];
+        let currentPhotoUrl = null; 
         let currentView = localStorage.getItem('ezo_view_mode') || 'list';
 
         function applyViewMode() {
@@ -122,21 +166,165 @@
             if (currentView === 'grid') container.classList.add('grid-view');
             else container.classList.remove('grid-view');
         }
-        function toggleView() { currentView = (currentView === 'list') ? 'grid' : 'list'; localStorage.setItem('ezo_view_mode', currentView); applyViewMode(); }
-        function navTo(cat, title) { currentCategory = cat; document.getElementById('header-title').innerText = title; document.getElementById('view-toggle-btn').style.display = 'block'; document.getElementById('main-screen').classList.remove('active-screen'); document.getElementById('section-screen').classList.add('active-screen'); applyViewMode(); loadData(); }
-        function navToMain() { document.getElementById('view-toggle-btn').style.display = 'none'; document.getElementById('section-screen').classList.remove('active-screen'); document.getElementById('main-screen').classList.add('active-screen'); document.getElementById('header-title').innerText = "Эзо Свечи"; }
-        function loadData() { db.collection(currentCategory).orderBy("timestamp", "desc").onSnapshot(snap => { const container = document.getElementById('data-container'); container.innerHTML = ""; allData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); allData.forEach(item => container.appendChild(createItemElement(item, currentCategory))); }); }
-        function createItemElement(data, cat) { const div = document.createElement('div'); div.className = 'data-item' + (data.image ? ' has-photo' : ''); div.onclick = () => openViewCard(data.id); const lines = (data.text || '').split('\n'); const title = lines[0] || 'БЕЗ НАЗВАНИЯ'; div.innerHTML = `<div class="item-actions"><button class="btn-edit" onclick="openEditModal('${data.id}', \`${data.text || ''}\`, '${data.link || ''}', '${data.image || ''}')">✎</button><button class="btn-delete" onclick="deleteItem('${data.id}', '${cat}')">✖</button></div>${data.image ? `<img src="${data.image}" class="item-img-thumb">` : ''}<div class="item-preview"><strong>${title}</strong></div>`; return div; }
-        async function uploadImage(file) { const formData = new FormData(); formData.append("image", file); const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData }); const result = await response.json(); return result.success ? result.data.url : null; }
-        async function handleSave() { const text = document.getElementById('f-text').value; const link = document.getElementById('f-link').value; const file = document.getElementById('f-file').files[0]; const btn = document.getElementById('btn-save'); btn.disabled = true; btn.innerText = "СОХРАНЕНИЕ..."; try { let finalImageUrl = currentPhotoUrl; if (file) { finalImageUrl = await uploadImage(file); } const payload = { text: text, link: link, image: finalImageUrl || "", timestamp: firebase.firestore.FieldValue.serverTimestamp() }; if (editId) await db.collection(currentCategory).doc(editId).update(payload); else await db.collection(currentCategory).add(payload); closeEditModal(); } catch (e) { alert("Ошибка сохранения!"); } finally { btn.disabled = false; btn.innerText = "СОХРАНИТЬ"; } }
-        function getLinkText(url) { const link = url.toLowerCase(); if (link.includes('drive.google') || link.includes('dropbox') || link.includes('disk.yandex')) return "📂 ОТКРЫТЬ ФАЙЛ"; if (link.includes('ozon.ru') || link.includes('wildberries.ru')) return "🛒 ПОСМОТРЕТЬ НА МАРКЕТПЛЕЙСЕ"; if (link.includes('play.google.com') || link.includes('.apk') || link.includes('.exe')) return "📥 СКАЧАТЬ ПРИЛОЖЕНИЕ"; if (link.includes('youtube.com') || link.includes('youtu.be')) return "🎬 СМОТРЕТЬ ВИДЕО"; return "🔗 ОТКРЫТЬ САЙТ"; }
-        function openViewCard(id) { const item = allData.find(d => d.id === id); if (!item) return; const lines = (item.text || '').split('\n'); const title = lines[0].toUpperCase(); const bodyText = lines.slice(1).join('\n'); const linkBtnText = item.link ? getLinkText(item.link) : ""; document.getElementById('view-area').innerHTML = `<span class="item-title-bold">${title}</span>${item.image ? `<img src="${item.image}" class="view-img">` : ''}<div class="view-text">${bodyText}</div>${item.link ? `<a href="${item.link}" target="_blank" class="view-link-btn">${linkBtnText}</a>` : ''}`; document.getElementById('view-modal').style.display = 'flex'; }
-        function openEditModal(id = null, t = '', l = '', img = '') { if(event) event.stopPropagation(); editId = id; currentPhotoUrl = img; document.getElementById('f-text').value = t; document.getElementById('f-link').value = l; document.getElementById('f-file').value = ""; document.getElementById('btn-del-photo').style.display = img ? 'block' : 'none'; document.getElementById('edit-modal').style.display = 'flex'; }
-        function removeCurrentPhoto() { if(confirm("Удалить фото?")) { currentPhotoUrl = null; document.getElementById('btn-del-photo').style.display = 'none'; } }
+
+        function toggleView() {
+            currentView = (currentView === 'list') ? 'grid' : 'list';
+            localStorage.setItem('ezo_view_mode', currentView);
+            applyViewMode();
+        }
+
+        function navTo(cat, title) {
+            currentCategory = cat;
+            document.getElementById('header-title').innerText = title;
+            document.getElementById('view-toggle-btn').style.display = 'block';
+            document.getElementById('main-screen').classList.remove('active-screen');
+            document.getElementById('section-screen').classList.add('active-screen');
+            applyViewMode();
+            loadData();
+        }
+
+        function navToMain() {
+            document.getElementById('view-toggle-btn').style.display = 'none';
+            document.getElementById('section-screen').classList.remove('active-screen');
+            document.getElementById('main-screen').classList.add('active-screen');
+            document.getElementById('header-title').innerText = "Ezo Candles";
+        }
+
+        function loadData() {
+            db.collection(currentCategory).orderBy("timestamp", "desc").onSnapshot(snap => {
+                const container = document.getElementById('data-container');
+                container.innerHTML = "";
+                allData = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                allData.forEach(item => container.appendChild(createItemElement(item, currentCategory)));
+            });
+        }
+
+        function createItemElement(data, cat) {
+            const div = document.createElement('div');
+            div.className = 'data-item' + (data.image ? ' has-photo' : '');
+            div.onclick = () => openViewCard(data.id);
+            
+            const lines = (data.text || '').split('\n');
+            const title = lines[0] || 'БЕЗ НАЗВАНИЯ';
+
+            div.innerHTML = `
+                <div class="item-actions">
+                    <button class="btn-edit" onclick="openEditModal('${data.id}', \`${data.text || ''}\`, '${data.link || ''}', '${data.image || ''}')">✎</button>
+                    <button class="btn-delete" onclick="deleteItem('${data.id}', '${cat}')">✖</button>
+                </div>
+                ${data.image ? `<img src="${data.image}" class="item-img-thumb">` : ''}
+                <div class="item-preview"><strong>${title}</strong></div>
+            `;
+            return div;
+        }
+
+        async function uploadImage(file) {
+            const formData = new FormData();
+            formData.append("image", file);
+            const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
+            const result = await response.json();
+            return result.success ? result.data.url : null;
+        }
+
+        async function handleSave() {
+            const text = document.getElementById('f-text').value;
+            const link = document.getElementById('f-link').value;
+            const file = document.getElementById('f-file').files[0];
+            const btn = document.getElementById('btn-save');
+
+            btn.disabled = true;
+            btn.innerText = "СОХРАНЕНИЕ...";
+
+            try {
+                let finalImageUrl = currentPhotoUrl;
+                if (file) {
+                    finalImageUrl = await uploadImage(file);
+                }
+
+                const payload = {
+                    text: text,
+                    link: link,
+                    image: finalImageUrl || "",
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                if (editId) await db.collection(currentCategory).doc(editId).update(payload);
+                else await db.collection(currentCategory).add(payload);
+
+                closeEditModal();
+            } catch (e) { alert("Ошибка сохранения!"); }
+            finally { btn.disabled = false; btn.innerText = "СОХРАНИТЬ"; }
+        }
+
+        function getLinkText(url) {
+            const link = url.toLowerCase();
+            if (link.includes('drive.google') || link.includes('dropbox') || link.includes('disk.yandex')) return "📂 ОТКРЫТЬ ФАЙЛ";
+            if (link.includes('ozon.ru') || link.includes('wildberries.ru')) return "🛒 ПОСМОТРЕТЬ НА МАРКЕТПЛЕЙСЕ";
+            if (link.includes('play.google.com') || link.includes('.apk') || link.includes('.exe')) return "📥 СКАЧАТЬ ПРИЛОЖЕНИЕ";
+            if (link.includes('youtube.com') || link.includes('youtu.be')) return "🎬 СМОТРЕТЬ ВИДЕО";
+            return "🔗 ОТКРЫТЬ САЙТ";
+        }
+
+        function openViewCard(id) {
+            const item = allData.find(d => d.id === id);
+            if (!item) return;
+
+            const lines = (item.text || '').split('\n');
+            const title = lines[0].toUpperCase();
+            const bodyText = lines.slice(1).join('\n');
+            const linkBtnText = item.link ? getLinkText(item.link) : "";
+
+            document.getElementById('view-area').innerHTML = `
+                <span class="item-title-bold">${title}</span>
+                ${item.image ? `<img src="${item.image}" class="view-img">` : ''}
+                <div class="view-text">${bodyText}</div>
+                ${item.link ? `<a href="${item.link}" target="_blank" class="view-link-btn">${linkBtnText}</a>` : ''}
+            `;
+            document.getElementById('view-modal').style.display = 'flex';
+        }
+
+        function openEditModal(id = null, t = '', l = '', img = '') {
+            if(event) event.stopPropagation();
+            editId = id;
+            currentPhotoUrl = img;
+            document.getElementById('f-text').value = t;
+            document.getElementById('f-link').value = l;
+            document.getElementById('f-file').value = "";
+            document.getElementById('btn-del-photo').style.display = img ? 'block' : 'none';
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+
+        function removeCurrentPhoto() {
+            if(confirm("Удалить фото?")) {
+                currentPhotoUrl = null;
+                document.getElementById('btn-del-photo').style.display = 'none';
+            }
+        }
+
         function closeEditModal() { document.getElementById('edit-modal').style.display = 'none'; }
         function closeViewModal() { document.getElementById('view-modal').style.display = 'none'; }
-        async function deleteItem(id, cat) { event.stopPropagation(); if(confirm("Удалить запись?")) await db.collection(cat).doc(id).delete(); }
-        async function globalSearch() { const q = document.getElementById('global-search').value.toLowerCase(); const box = document.getElementById('search-results-box'); const list = document.getElementById('search-list'); if (q.length < 2) { box.style.display = 'none'; return; } box.style.display = 'block'; list.innerHTML = ""; const cats = ['ozon', 'items', 'finance', 'prod']; for (let c of cats) { const snap = await db.collection(c).get(); snap.forEach(doc => { const d = doc.data(); if (d.text && d.text.toLowerCase().includes(q)) list.appendChild(createItemElement({id:doc.id, ...d}, c)); }); } }
+
+        async function deleteItem(id, cat) {
+            event.stopPropagation();
+            if(confirm("Удалить запись?")) await db.collection(cat).doc(id).delete();
+        }
+
+        async function globalSearch() {
+            const q = document.getElementById('global-search').value.toLowerCase();
+            const box = document.getElementById('search-results-box');
+            const list = document.getElementById('search-list');
+            if (q.length < 2) { box.style.display = 'none'; return; }
+            box.style.display = 'block';
+            list.innerHTML = "";
+            const cats = ['ozon', 'items', 'finance', 'prod'];
+            for (let c of cats) {
+                const snap = await db.collection(c).get();
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    if (d.text && d.text.toLowerCase().includes(q)) list.appendChild(createItemElement({id:doc.id, ...d}, c));
+                });
+            }
+        }
     </script>
 </body>
 </html>
